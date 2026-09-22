@@ -1,0 +1,19 @@
+# The index is built offline by `waypoint index` (see the CLI) and never
+# mutated afterwards, so the service opens it once and shares it.
+waypoint:
+  index: ${WAYPOINT_INDEX:indexes/msmarco-1m.wpt}
+  max-k: 100
+  # Off by default, mirroring Index.open: the CRC32 is checked by `waypoint
+  # verify`, not on every start. Turn it on where a slower boot is worth
+  # knowing the file is intact.
+  verify-on-startup: false
+
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: waypoint-service
+  mvc:
+    problemdetails:
+      enabled: false

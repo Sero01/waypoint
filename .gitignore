@@ -1,0 +1,22 @@
+target/
+*.class
+
+# Built indexes and downloaded corpora: large, reproducible, not artifacts.
+# `scripts/bench.sh` rebuilds both from corpus/collection-1m.tsv.
+indexes/
+corpus/
+
+# AOT caches and CDS archives produced by the benchmark harness.
+*.aot
+*.jsa
+
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Built by `npm run build` in web/ and served by Spring Boot from the jar.
+service/src/main/resources/static/
+
+# Local scratch output (machine-specific classpaths).
+scratch_lcp.txt

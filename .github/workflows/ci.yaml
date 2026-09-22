@@ -1,0 +1,98 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # The full suite, including the two tests that exist to stop the
+      # central claim rotting: DependencyBudgetTest reads core's bytecode and
+      # fails if anything outside the JDK is referenced, and ClassBudgetTest
+      # forks a JVM with -Xlog:class+load and fails if one cold query loads
+      # more classes than the committed budget.
+      - name: Test
+        run: mvn -B verify
+
+      # A smoke run of the benchmark harness on a tiny corpus. It proves the
+      # harness still executes and that both engines still agree on results;
+      # it does not produce publishable numbers, because a shared CI runner
+      # cannot. The committed numbers in results/ come from a disclosed
+      # machine, and the floor row in each report says how noisy it was.
+      - name: Benchmark smoke run
+        run: |
+          set -euo pipefail
+          mvn -B -q install -DskipTests
+          M2="$HOME/.m2/repository"
+          LUCENE_VERSION="$(mvn -B -q help:evaluate -Dexpression=lucene.version -DforceStdout)"
+          LUCENE_CP="bench/target/original-waypoint-bench.jar"
+          LUCENE_CP="$LUCENE_CP:$M2/io/waypoint/waypoint-core/1.0.0-SNAPSHOT/waypoint-core-1.0.0-SNAPSHOT.jar"
+          LUCENE_CP="$LUCENE_CP:$M2/org/apache/lucene/lucene-core/$LUCENE_VERSION/lucene-core-$LUCENE_VERSION.jar"
+          LUCENE_CP="$LUCENE_CP:$M2/org/apache/lucene/lucene-analysis-common/$LUCENE_VERSION/lucene-analysis-common-$LUCENE_VERSION.jar"
+
+          mkdir -p indexes results
+          head -c 2000000 core/src/test/resources/fixture.tsv > /tmp/smoke.tsv 2>/dev/null \
+            || awk 'BEGIN{for(i=0;i<20000;i++) printf "d%d\tthe quick brown fox %d jumps over the lazy dog manhattan project physics\n", i, i%997}' > /tmp/smoke.tsv
+
+          java -cp "$LUCENE_CP" io.waypoint.bench.BenchMain prepare \
+            --corpus /tmp/smoke.tsv --wp-out indexes/smoke.wpt --lucene-out indexes/smoke-lucene
+
+          java -cp "$LUCENE_CP" io.waypoint.bench.ColdStartSuite \
+            --java "$JAVA_HOME/bin/java" \
+            --wp-cp cli/target/waypoint-cli.jar --wp-index indexes/smoke.wpt \
+            --lucene-cp "$LUCENE_CP" --lucene-index indexes/smoke-lucene \
+            --query "manhattan project" --runs 3 --warmup 1 \
+            --out results/smoke --work target/coldstart-smoke
+
+      - name: Upload benchmark output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-smoke
+          path: results/
+
+  # The front end is not a Maven module, so `mvn verify` does not see it. It
+  # gets its own job rather than none: it is the only part of the repository
+  # that decides what a lower-bound hit count or a positions-less index looks
+  # like to a person, and those decisions are worth a test that runs.
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # Also proves the build still lands in the service's static resources,
+      # which is what makes the app ship inside waypoint-service.jar.
+      - name: Build
+        run: npm run build
+
+      - name: Check the build reached the service
+        run: test -f ../service/src/main/resources/static/index.html

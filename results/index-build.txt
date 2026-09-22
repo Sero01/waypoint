@@ -1,0 +1,15 @@
+loading C:\Users\126ah\.tools\corpus\collection-1m.tsv
+loaded 1,000,000 documents in 4.8 s
+building waypoint index -> indexes\msmarco-1m.wpt
+building lucene index -> indexes\msmarco-1m-lucene
+Sept 07, 2026 3:03:36 AM org.apache.lucene.internal.vectorization.VectorizationProvider lookup
+WARNING: Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.
+
+waypoint: 1,000,000 docs, 416,287 terms, 57,513,825 tokens, avgdl 57.51
+
+engine          build (s)         docs/s      index bytes
+waypoint            12.26          81560       85,102,422
+lucene              15.55          64296       70,573,649
+
+index size ratio waypoint/lucene: 1.21x
+(build throughput is context, not a claim: both sides run the same tokenizer, which the teardown measured at 74% of a naive build)

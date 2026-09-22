@@ -1,0 +1,24 @@
+
+waypoint: 1000 classes loaded
+    java.lang                      122
+    java.lang.invoke               100
+    java.util                       90
+    jdk.internal.classfile          63
+    java.lang.classfile             48
+    jdk.internal.foreign            38
+    java.io                         32
+    sun.nio.fs                      31
+    jdk.internal.loader             30
+    java.util.concurrent            26
+
+lucene (SIMD on): 2512 classes loaded
+    org.apache.lucene              604
+    java.lang.invoke               212
+    jdk.incubator.vector           207
+    java.util                      186
+    java.lang                      153
+    java.util.stream               120
+    jdk.internal.classfile          79
+    java.lang.classfile             66
+    java.util.concurrent            54
+    jdk.internal.foreign            42
